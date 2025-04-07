@@ -1,9 +1,196 @@
 ﻿@page "/"
 
-<PageTitle>Index</PageTitle>
+<h3>Productos</h3>
 
-<h1>Hello, Mundoooooo!</h1>
+@if (!string.IsNullOrEmpty(Error))
+{
+    <div class="alert alert-danger">@Error</div>
+}
 
-Welcome to your new app.
+<div class="mb-3">
+    <label>Inventario:</label>
+    <input type="number" class="form-control" @bind="Inventario" />
+</div>
+<div class="mb-3">
+    <label>Nombre:</label>
+    <input type="text" class="form-control" @bind="Nombre" maxlength="200" />
+</div>
+<div class="mb-3">
+    <label>Departamento:</label>
+    <select class="form-control" @bind="Departamento">
+        <option value="">Seleccione</option>
+        <option>Frutas</option>
+        <option>Verduras</option>
+        <option>Lácteos</option>
+    </select>
+</div>
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+@if (EnEdicion)
+{
+    <button class="btn btn-primary" @onclick="ActualizarProducto">Actualizar</button>
+    <button class="btn btn-secondary ms-2" @onclick="CancelarEdicion">Cancelar</button>
+}
+else
+{
+    <button class="btn btn-success" @onclick="GuardarProducto">Guardar</button>
+}
+
+<button class="btn btn-info ms-2" @onclick="MostrarExistencias">Existencias</button>
+<button class="btn btn-secondary ms-2" @onclick="MostrarListado">Listado</button>
+
+<hr />
+
+@if (VistaListado)
+{
+    <h4>Lista de Productos</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Inventario</th>
+                <th>Nombre</th>
+                <th>Departamento</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var producto in Productos)
+            {
+                <tr>
+                    <td>@producto.Inventario</td>
+                    <td>@producto.Nombre</td>
+                    <td>@producto.Departamento</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" @onclick="() => EditarProducto(producto)">Editar</button>
+                        <button class="btn btn-danger btn-sm ms-2" @onclick="() => EliminarProducto(producto.Inventario)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <h4>Existencias por Departamento</h4>
+    <ul>
+        @foreach (var grupo in Productos.GroupBy(p => p.Departamento))
+        {
+            <li><strong>@grupo.Key:</strong> @grupo.Count() producto(s)</li>
+        }
+    </ul>
+}
+
+@code {
+    public class Producto
+    {
+        public int Inventario { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+        public string Departamento { get; set; } = string.Empty;
+    }
+
+    private List<Producto> Productos = new();
+    private int Inventario;
+    private string Nombre = string.Empty;
+    private string Departamento = string.Empty;
+    private string Error = string.Empty;
+
+    private bool EnEdicion = false;
+    private int InventarioEnEdicion;
+
+    private bool VistaListado = true;
+
+    private void GuardarProducto()
+    {
+        Error = string.Empty;
+
+        if (Inventario <= 0)
+        {
+            Error = "El número de inventario debe ser mayor a cero.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(Nombre))
+        {
+            Error = "El nombre no puede estar vacío.";
+            return;
+        }
+        if (Nombre.Length > 200)
+        {
+            Error = "El nombre excede el límite de 200 caracteres.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(Departamento) || !(new[] { "Frutas", "Verduras", "Lácteos" }).Contains(Departamento))
+        {
+            Error = "Seleccione un departamento válido.";
+            return;
+        }
+        if (Productos.Any(p => p.Inventario == Inventario))
+        {
+            Error = "El número de inventario ya está registrado.";
+            return;
+        }
+
+        Productos.Add(new Producto
+            {
+                Inventario = Inventario,
+                Nombre = Nombre,
+                Departamento = Departamento
+            });
+
+        LimpiarFormulario();
+    }
+
+    private void EditarProducto(Producto producto)
+    {
+        Inventario = producto.Inventario;
+        Nombre = producto.Nombre;
+        Departamento = producto.Departamento;
+        InventarioEnEdicion = producto.Inventario;
+        EnEdicion = true;
+        Error = string.Empty;
+    }
+
+    private void ActualizarProducto()
+    {
+        var producto = Productos.FirstOrDefault(p => p.Inventario == InventarioEnEdicion);
+        if (producto != null)
+        {
+            producto.Nombre = Nombre;
+            producto.Departamento = Departamento;
+        }
+
+        EnEdicion = false;
+        LimpiarFormulario();
+    }
+
+    private void CancelarEdicion()
+    {
+        EnEdicion = false;
+        LimpiarFormulario();
+    }
+
+    private void EliminarProducto(int inventario)
+    {
+        var producto = Productos.FirstOrDefault(p => p.Inventario == inventario);
+        if (producto != null)
+        {
+            Productos.Remove(producto);
+        }
+    }
+
+    private void MostrarExistencias()
+    {
+        VistaListado = false;
+    }
+
+    private void MostrarListado()
+    {
+        VistaListado = true;
+    }
+
+    private void LimpiarFormulario()
+    {
+        Inventario = 0;
+        Nombre = string.Empty;
+        Departamento = string.Empty;
+        Error = string.Empty;
+    }
+}
